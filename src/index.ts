@@ -84,8 +84,49 @@ async function handleChatRequest(
 			},
 		);
 
-		// Return streaming response
-		return response;
+		// Transform the streaming response to SSE format
+		const reader = response.body?.getReader();
+		if (!reader) {
+			throw new Error("No response body");
+		}
+
+		const encoder = new TextEncoder();
+		const decoder = new TextDecoder();
+
+		const stream = new ReadableStream({
+			async start(controller) {
+				try {
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+
+						// Decode the chunk
+						const chunk = decoder.decode(value, { stream: true });
+
+						// Parse AI response format and convert to SSE
+						try {
+							const data = JSON.parse(chunk);
+							const responseText = data.response || "";
+							const sseMessage = `data: ${JSON.stringify({ response: responseText })}\n\n`;
+							controller.enqueue(encoder.encode(sseMessage));
+						} catch {
+							// If chunk is not valid JSON, skip it
+						}
+					}
+					controller.close();
+				} catch (error) {
+					controller.error(error);
+				}
+			},
+		});
+
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+			},
+		});
 	} catch (error) {
 		console.error("Error processing chat request:", error);
 		return new Response(
