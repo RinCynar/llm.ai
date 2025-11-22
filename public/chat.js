@@ -38,10 +38,7 @@ let chatHistory = [
 ];
 let isProcessing = false;
 
-// Auto-resize textarea - Material text field handles this automatically
-userInput.addEventListener("input", () => {
-	// The md-outlined-text-field auto-resizes, so no manual height adjustment is needed.
-});
+
 
 // Send message on Enter (without Shift)
 userInput.addEventListener("keydown", function (e) {
