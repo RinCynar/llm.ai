@@ -9,6 +9,24 @@ const chatMessages = document.getElementById("chat-messages");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 const typingIndicator = document.getElementById("typing-indicator");
+const themeSwitcher = document.getElementById("theme-switcher");
+const body = document.body;
+
+// Theme switching
+themeSwitcher.addEventListener("click", () => {
+	const isDark = body.dataset.theme === "dark";
+	const newTheme = isDark ? "light" : "dark";
+	body.dataset.theme = newTheme;
+	localStorage.setItem("theme", newTheme);
+	themeSwitcher.selected = newTheme === "dark";
+});
+
+// Load saved theme
+document.addEventListener("DOMContentLoaded", () => {
+	const savedTheme = localStorage.getItem("theme") || "dark"; // Default to dark
+	body.dataset.theme = savedTheme;
+	themeSwitcher.selected = savedTheme === "dark";
+});
 
 // Chat state
 let chatHistory = [
@@ -20,10 +38,9 @@ let chatHistory = [
 ];
 let isProcessing = false;
 
-// Auto-resize textarea as user types
-userInput.addEventListener("input", function () {
-	this.style.height = "auto";
-	this.style.height = this.scrollHeight + "px";
+// Auto-resize textarea - Material text field handles this automatically
+userInput.addEventListener("input", () => {
+	// The md-outlined-text-field auto-resizes, so no manual height adjustment is needed.
 });
 
 // Send message on Enter (without Shift)
@@ -56,7 +73,6 @@ async function sendMessage() {
 
 	// Clear input
 	userInput.value = "";
-	userInput.style.height = "auto";
 
 	// Show typing indicator
 	typingIndicator.classList.add("visible");
@@ -108,18 +124,20 @@ async function sendMessage() {
 			// Process SSE format
 			const lines = chunk.split("\n");
 			for (const line of lines) {
-				try {
-					const jsonData = JSON.parse(line);
-					if (jsonData.response) {
-						// Append new content to existing text
-						responseText += jsonData.response;
-						assistantMessageEl.querySelector("p").textContent = responseText;
+				if (line.startsWith("data: ")) {
+					try {
+						const jsonData = JSON.parse(line.substring(6));
+						if (jsonData.response) {
+							// Append new content to existing text
+							responseText += jsonData.response;
+							assistantMessageEl.querySelector("p").textContent = responseText;
 
-						// Scroll to bottom
-						chatMessages.scrollTop = chatMessages.scrollHeight;
+							// Scroll to bottom
+							chatMessages.scrollTop = chatMessages.scrollHeight;
+						}
+					} catch (e) {
+						// Ignore empty lines or parsing errors
 					}
-				} catch (e) {
-					console.error("Error parsing JSON:", e);
 				}
 			}
 		}
